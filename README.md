@@ -1,31 +1,46 @@
-# sarvajanik
+public JsonResult Post(Patient p)
+        {
+            string query = @"
+              select insertData(@FirstName,@LastName,@MiddleName,@Sex,@Dob::date);
+            ";
 
-if firstName != '' then
-		 conditional := 'where first_name = '''||firstName||'''';
-	end if;
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("CrudApi");
+            NpgsqlDataReader myReader;
+            using (NpgsqlConnection myCon = new NpgsqlConnection(sqlDataSource))
+            {
+                myCon.Open();
+                using (TransactionScope transactionScope = new TransactionScope())
+                {
+                    try
+                    {
+                        using (NpgsqlCommand myCommand = new NpgsqlCommand(query, myCon))
+                        {
+                            myCommand.Parameters.AddWithValue("@FirstName", p.FirstName);
+                            myCommand.Parameters.AddWithValue("@LastName", p.LastName);
+                            myCommand.Parameters.AddWithValue("@MiddleName", p.MiddleName);
+                            myCommand.Parameters.AddWithValue("@Sex", p.Sex);
+                            myCommand.Parameters.AddWithValue("@Dob", p.Dob);
 
-	if lastName != '' then 
-		if conditional != '' then
-			conditional := conditional||' and last_name = '''||lastName||'''';
-		else 
-			conditional := 'where last_name = '''||lastName||'''';
-		end if;
-	end if;
-	if gender != '' then 
-		if conditional != '' then
-			conditional := conditional||' and sex = '''||gender||'''';
-		else 
-			conditional := 'where sex = '''||gender||'''';
-		end if;
-	end if;
-	if dateofbirth != '' then 
-		if conditional != '' then
-			conditional := conditional||' and dob = '''||dateofbirth||'''';
-		else 
-			conditional := 'where dob = '''||dateofbirth||'''';
-		end if;
-	end if;
-  
-  query1 := query1||conditional||' ORDER BY '|| orderby|| ' ASC LIMIT '|| pageSize ||' OFFSET (('||pageNumber||'-1) *'|| pageSize||')';
-	raise notice 'sql %' , query1;
-	return query execute query1;
+
+                            myReader = myCommand.ExecuteReader();
+                            table.Load(myReader);
+
+                            myReader.Close();
+                            myCon.Close();
+
+                        }
+
+                        transactionScope.Complete();
+                        transactionScope.Dispose();
+                    }
+                    catch (TransactionException ex)
+                    {
+                        transactionScope.Dispose();
+
+                    }
+                }
+            }
+               
+                return new JsonResult(("record inserted"));
+        }
